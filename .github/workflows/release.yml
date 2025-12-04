@@ -1,13 +1,13 @@
-name: Build, Approve, Publish
+name: Build, Stage, Approve, Publish
 
 on:
   push:
     tags:
-      - "v*"   # Trigger on version tags like v1.0.0
+      - "v*"
 
 jobs:
-  build-and-test:
-    name: Build and Test Package
+  build-test-stage:
+    name: Build + Test + Stage to TestPyPI
     runs-on: ubuntu-latest
 
     steps:
@@ -17,12 +17,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"   # change if needed
+          python-version: "3.11"
 
       - name: Install build & test deps
         run: |
           python -m pip install --upgrade pip
-          pip install build pytest  # add deps if needed
+          pip install build pytest
 
       - name: Build distribution
         run: python -m build
@@ -30,39 +30,46 @@ jobs:
       - name: Run tests
         run: pytest -q
 
-      - name: Upload artifacts (dist/)
+      - name: Upload artifacts for later
         uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
 
-  approve-publish:
-    name: Approve → Publish → Docs
-    needs: build-and-test
+      # 🔥 STAGING PUBLISH → TestPyPI
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          user: __token__
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+
+
+  approve-publish-prod:
+    name: Approve → Publish to PyPI → Trigger Docs
+    needs: build-test-stage
     runs-on: ubuntu-latest
 
-    # 🔥🔥 MANUAL APPROVAL BLOCK 🔥🔥
-    #
-    # Create an environment in GitHub named `production`
-    # Set required reviewers there.
-    #
+    # 🔥 MANUAL APPROVAL REQUIRED HERE
     environment:
       name: production
-      url: https://pypi.org/project/YOUR-PACKAGE-NAME/  # <<< EDIT THIS
+      url: https://pypi.org/project/YOUR-PACKAGE-NAME/   # <<< CHANGE THIS
 
     steps:
-      - name: Download artifacts
+      - name: Download artifacts from staging job
         uses: actions/download-artifact@v4
         with:
           name: dist
 
+      # 🔥 PRODUCTION PUBLISH → PyPI
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}   # <<< setup this secret
+          password: ${{ secrets.PYPI_API_TOKEN }}
 
-      - name: Trigger ReadTheDocs build
+      # 🔥 READTHEDOCS REBUILD
+      - name: Trigger ReadTheDocs Build
         run: |
           curl -X POST \
             -H "Authorization: Token ${{ secrets.RTD_TOKEN }}" \
