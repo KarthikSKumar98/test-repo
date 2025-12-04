@@ -6,68 +6,141 @@ on:
       - "v*"
 
 jobs:
-  build-test-stage:
-    name: Build + Test + Stage to TestPyPI
+  build:
+    name: Build distribution 📦
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.x"
+    - name: Install pypa/build
+      run: >-
+        python3 -m
+        pip install
+        build
+        --user
+    - name: Build a binary wheel and a source tarball
+      run: python3 -m build
+    - name: Store the distribution packages
+      uses: actions/upload-artifact@v5
+      with:
+        name: python-package-distributions
+        path: dist/
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+  # publish-to-pypi:
+  #   name: >-
+  #     Publish Python 🐍 distribution 📦 to PyPI
+  #   if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
+  #   needs:
+  #   - build
+  #   runs-on: ubuntu-latest
+  #   environment:
+  #     name: pypi
+  #     url: https://pypi.org/p/<package-name>  # Replace <package-name> with your PyPI project name
+  #   permissions:
+  #     id-token: write  # IMPORTANT: mandatory for trusted publishing
 
-      - name: Install build & test deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install build pytest
+    # steps:
+    # - name: Download all the dists
+    #   uses: actions/download-artifact@v6
+    #   with:
+    #     name: python-package-distributions
+    #     path: dist/
+    # - name: Publish distribution 📦 to PyPI
+    #   uses: pypa/gh-action-pypi-publish@release/v1
 
-      - name: Build distribution
-        run: python -m build
-
-      - name: Upload artifacts for later
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      # 🔥 STAGING PUBLISH → TestPyPI
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/project/pycentral/
-          user: __token__
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
-
-
-  approve-publish-prod:
-    name: Approve → Publish to PyPI → Trigger Docs
-    needs: build-test-stage
+  publish-to-testpypi:
+    name: Publish Python 🐍 distribution 📦 to TestPyPI
+    needs:
+    - build
     runs-on: ubuntu-latest
 
-    # 🔥 MANUAL APPROVAL REQUIRED HERE
     environment:
-      name: production
-      url: https://pypi.org/project/YOUR-PACKAGE-NAME/   # <<< CHANGE THIS
+      name: testpypi
+      url: https://test.pypi.org/p/pycentral
+
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
-      - name: Download artifacts from staging job
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
+    - name: Download all the dists
+      uses: actions/download-artifact@v6
+      with:
+        name: python-package-distributions
+        path: dist/
+    - name: Publish distribution 📦 to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/p/pycentral
 
-      # 🔥 PRODUCTION PUBLISH → PyPI
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+# jobs:
+#   build-test-stage:
+#     name: Build + Test + Stage to TestPyPI
+#     runs-on: ubuntu-latest
 
-      # 🔥 READTHEDOCS REBUILD
-      - name: Trigger ReadTheDocs Build
-        run: |
-          curl -X POST \
-            -H "Authorization: Token ${{ secrets.RTD_TOKEN }}" \
-            https://readthedocs.org/api/v3/projects/YOUR-RTD-PROJECT-SLUG/versions/latest/builds/
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Set up Python
+#         uses: actions/setup-python@v5
+#         with:
+#           python-version: "3.11"
+
+#       - name: Install build & test deps
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip install build pytest
+
+#       - name: Build distribution
+#         run: python -m build
+
+#       - name: Upload artifacts for later
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: dist
+#           path: dist/
+
+#       # 🔥 STAGING PUBLISH → TestPyPI
+#       - name: Publish to TestPyPI
+#         uses: pypa/gh-action-pypi-publish@release/v1
+#         with:
+#           repository-url: https://test.pypi.org/project/pycentral/
+#           user: __token__
+#           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+
+
+#   approve-publish-prod:
+#     name: Approve → Publish to PyPI → Trigger Docs
+#     needs: build-test-stage
+#     runs-on: ubuntu-latest
+
+#     # 🔥 MANUAL APPROVAL REQUIRED HERE
+#     environment:
+#       name: production
+#       url: https://pypi.org/project/YOUR-PACKAGE-NAME/   # <<< CHANGE THIS
+
+#     steps:
+#       - name: Download artifacts from staging job
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: dist
+
+#       # 🔥 PRODUCTION PUBLISH → PyPI
+#       - name: Publish to PyPI
+#         uses: pypa/gh-action-pypi-publish@release/v1
+#         with:
+#           user: __token__
+#           password: ${{ secrets.PYPI_API_TOKEN }}
+
+#       # 🔥 READTHEDOCS REBUILD
+#       - name: Trigger ReadTheDocs Build
+        # run: |
+        #   curl -X POST \
+        #     -H "Authorization: Token ${{ secrets.RTD_TOKEN }}" \
+        #     https://readthedocs.org/api/v3/projects/YOUR-RTD-PROJECT-SLUG/versions/latest/builds/
