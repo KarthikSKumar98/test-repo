@@ -8,7 +8,7 @@ with open(path.join(this_directory, "README.md"), encoding="utf-8") as fh:
 VERSION = "2.0b13"
 
 setuptools.setup(
-    name="test-repo",
+    name="test-repo-1",
     version=VERSION,
     author="aruba-automation",
     author_email="aruba-automation@hpe.com",
