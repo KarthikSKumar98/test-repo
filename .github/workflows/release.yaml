@@ -62,7 +62,7 @@ jobs:
 
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/pycentral
+      url: https://test.pypi.org/p/pycentral/
 
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
@@ -76,7 +76,7 @@ jobs:
     - name: Publish distribution 📦 to TestPyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        repository-url: https://test.pypi.org/p/pycentral
+        repository-url: https://test.pypi.org/p/pycentral/
 
 # jobs:
 #   build-test-stage:
