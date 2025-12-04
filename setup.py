@@ -8,7 +8,7 @@ with open(path.join(this_directory, "README.md"), encoding="utf-8") as fh:
 VERSION = "2.0a11"
 
 setuptools.setup(
-    name="pycentral",
+    name="test",
     version=VERSION,
     author="aruba-automation",
     author_email="aruba-automation@hpe.com",
